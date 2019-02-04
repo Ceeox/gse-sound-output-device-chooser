@@ -20,7 +20,6 @@ const GLib = imports.gi.GLib;
 const GObject = imports.gi.GObject;
 const Gio = imports.gi.Gio;
 const Gtk = imports.gi.Gtk;
-const Lang = imports.lang;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
@@ -44,17 +43,13 @@ const ICON_THEME_NONE = "none";
 function init(){}
 
 
-const SDCSettingsWidget = new GObject.Class({
-    Name: 'SDC.Prefs.Widget',
-    GTypeName: 'SDCSettingsWidget',
-    Extends: Gtk.Box,
-
-    _init: function(params) {
-        this.parent(params);
+const SDCSettingsWidget = class SDCSettingsWidget extends Gtk.Box{
+    constructor(params) {
+        super(params);
         this.orientation = Gtk.Orientation.VERTICAL;
         this.spacing = 0;
 
-     // creates the settings
+        // creates the settings
         this._settings = Lib.getSettings(SETTINGS_SCHEMA);
 
         // creates the ui builder and add the main resource file
@@ -99,38 +94,40 @@ const SDCSettingsWidget = new GObject.Class({
             let hideAlwaysToggleRender = builder.get_object("HideAlwaysToggleRender");
             let showActiveToggleRender = builder.get_object("ShowActiveToggleRender");
 
-            this._signalManager.addSignal(showAlwaysToggleRender, "toggled", Lang.bind(this, this._showAlwaysToggleRenderCallback));
-            this._signalManager.addSignal(hideAlwaysToggleRender, "toggled", Lang.bind(this, this._hideAlwaysToggleRenderCallback));
-            this._signalManager.addSignal(showActiveToggleRender, "toggled", Lang.bind(this, this._showActiveToggleRenderCallback));
+            this._signalManager.addSignal(showAlwaysToggleRender, "toggled", () => this._showAlwaysToggleRenderCallback());
+            this._signalManager.addSignal(hideAlwaysToggleRender, "toggled", () => this._hideAlwaysToggleRenderCallback());
+            this._signalManager.addSignal(showActiveToggleRender, "toggled", ()=> this._showActiveToggleRenderCallback());
 
             this._portsStore = builder.get_object("ports-store");
 
             this._populatePorts();
             this._restorePortsFromSettings();
         }
-    },
+    }
 
-    _populatePorts: function (){
+    _populatePorts() {
         let ports = Lib.getPorts();
         for (let port of ports)
         {
-            this._portsStore.set(this._portsStore.append(),[0,1,2,3,4,5],[port.human_name, false, false, true, port.name,3]);
+            this._portsStore.set(this._portsStore.append(),
+                [0,1,2,3,4,5], [port.human_name,
+                false, false, true, port.name,3]);
         }
-    },
+    }
 
-    _showAlwaysToggleRenderCallback: function(widget, path) {
+    _showAlwaysToggleRenderCallback(widget, path) {
         this._toggleCallback(widget, path, 1, [2, 3]);
-    },
+    }
 
-    _hideAlwaysToggleRenderCallback: function(widget, path) {
+    _hideAlwaysToggleRenderCallback(widget, path) {
         this._toggleCallback(widget, path, 2, [1, 3]);
-    },
+    }
 
-    _showActiveToggleRenderCallback: function(widget, path) {
+    _showActiveToggleRenderCallback(widget, path) {
         this._toggleCallback(widget, path, 3, [1, 2]);
-    },
+    }
 
-    _toggleCallback: function(widget, path, activeCol, inactiveCols) {
+    _toggleCallback(widget, path, activeCol, inactiveCols) {
         let active = !widget.active;
         if(!active)
         {
@@ -147,9 +144,9 @@ const SDCSettingsWidget = new GObject.Class({
             this._portsStore.set_value(iter, col, !active);
         }
         this._commitSettings();
-    },
+    }
 
-    _commitSettings: function() {
+    _commitSettings() {
         let ports = [];
         let [success, iter] = this._portsStore.get_iter_first();
 
@@ -165,9 +162,9 @@ const SDCSettingsWidget = new GObject.Class({
         }
 
         this._settings.set_string(PORT_SETTINGS, JSON.stringify(ports));
-    },
+    }
 
-    _restorePortsFromSettings: function() {
+    _restorePortsFromSettings() {
         let ports = JSON.parse(this._settings.get_string(PORT_SETTINGS));
 
         let found;
@@ -201,8 +198,7 @@ const SDCSettingsWidget = new GObject.Class({
             }
         }
     }
-});
-
+};
 
 function buildPrefsWidget() {
     let _settingsWidget = new SDCSettingsWidget();

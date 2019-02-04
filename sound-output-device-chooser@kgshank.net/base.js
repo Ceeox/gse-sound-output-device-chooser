@@ -16,7 +16,6 @@
  ******************************************************************************/
  /* jshint moz:true */
 
-const Lang = imports.lang;
 const Main = imports.ui.main;
 const PopupMenu = imports.ui.popupMenu;
 const VolumeMenu = imports.ui.status.volume;
@@ -30,13 +29,9 @@ const Prefs = Me.imports.prefs;
 const SignalManager = Lib.SignalManager;
 
 
-const SoundDeviceChooserBase = new Lang.Class({
-    Name: 'SoundDeviceChooserBase',
-    Extends: PopupMenu.PopupSubMenuMenuItem,
-    Abstract: true,
-
-    _init: function(deviceType) {
-        this.parent('Extension initialising...', true);
+const SoundDeviceChooserBase = class SoundDeviceChooserBase extends PopupMenu.PopupSubMenuMenuItem {
+    constructor(deviceType) {
+        super('Extension initialising...', true);
         this.deviceType = deviceType;
         this._devices = {};
         this._availableDevicesIds = {};
@@ -48,28 +43,47 @@ const SoundDeviceChooserBase = new Lang.Class({
             this._onControlStateChanged();
         }
         else {
-            this._controlStateChangeSignal = this._signalManager.addSignal(this._control, "state-changed", Lang.bind(this,this._onControlStateChanged));
+            this._controlStateChangeSignal = this._signalManager.addSignal(this._control,
+                "state-changed", () => this._onControlStateChanged());
         }
-    },
+    }
 
-    _onControlStateChanged: function() {
+    _onControlStateChanged() {
         if(this._control.get_state() == Gvc.MixerControlState.READY) {
             if(!this._initialised) {
                 this._initialised = true;
 
-                this._signalManager.addSignal(this._control, this.deviceType + "-added", Lang.bind(this,this._deviceAdded));
-                this._signalManager.addSignal(this._control, this.deviceType + "-removed", Lang.bind(this,this._deviceRemoved));
-                this._signalManager.addSignal(this._control, "active-" + this.deviceType + "-update", Lang.bind(this,this._deviceActivated));
+                this._signalManager.addSignal(this._control,
+                    this.deviceType + "-added",
+                    () => this._deviceAdded());
+                this._signalManager.addSignal(this._control,
+                    this.deviceType + "-removed",
+                    () => this._deviceRemoved());
+                this._signalManager.addSignal(this._control,
+                    "active-" + this.deviceType + "-update",
+                    () => this._deviceActivated());
 
-                this._signalManager.addSignal(this._settings,"changed::" + Prefs.HIDE_ON_SINGLE_DEVICE,Lang.bind(this,this._setChooserVisibility) );
-                this._signalManager.addSignal(this._settings,"changed::" + Prefs.SHOW_PROFILES , Lang.bind(this,this._setProfileVisibility));
-                this._signalManager.addSignal(this._settings,"changed::" + Prefs.ICON_THEME , Lang.bind(this,this._setIcons));
-                this._signalManager.addSignal(this._settings,"changed::" + Prefs.HIDE_MENU_ICONS , Lang.bind(this,this._setIcons));
-                this._signalManager.addSignal(this._settings,"changed::" + Prefs.PORT_SETTINGS , Lang.bind(this,this._resetDevices));
+                this._signalManager.addSignal(this._settings,
+                    "changed::" + Prefs.HIDE_ON_SINGLE_DEVICE,
+                    () => this._setChooserVisibility() );
+                this._signalManager.addSignal(this._settings,
+                    "changed::" + Prefs.SHOW_PROFILES,
+                    () =>this._setProfileVisibility());
+                this._signalManager.addSignal(this._settings,
+                    "changed::" + Prefs.ICON_THEME,
+                    () => this._setIcons());
+                this._signalManager.addSignal(this._settings,
+                    "changed::" + Prefs.HIDE_MENU_ICONS,
+                    () => this._setIcons());
+                this._signalManager.addSignal(this._settings,
+                    "changed::" + Prefs.PORT_SETTINGS,
+                    () => this._resetDevices());
 
-                this._show_device_signal =  Prefs["SHOW_" + this.deviceType.toUpperCase()  + "_DEVICES"];
+                this._show_device_signal =  Prefs["SHOW_" + this.deviceType.toUpperCase() + "_DEVICES"];
 
-                this._signalManager.addSignal(this._settings,"changed::" + this._show_device_signal, Lang.bind(this,this._setVisibility) );
+                this._signalManager.addSignal(this._settings,
+                    "changed::" + this._show_device_signal,
+                    () => this._setVisibility());
 
                 this._portsSettings = JSON.parse(this._settings.get_string(Prefs.PORT_SETTINGS));
 
@@ -102,8 +116,8 @@ const SoundDeviceChooserBase = new Lang.Class({
                     }
                 }
 
-                this.activeProfileTimeout =  Mainloop.timeout_add(1000, Lang.bind(this,
-                        this._setActiveProfile));
+                this.activeProfileTimeout =  Mainloop.timeout_add(1000, () => 
+                        this._setActiveProfile());
 
                 if(this._controlStateChangeSignal) {
                     this._controlStateChangeSignal.disconnect();
@@ -112,9 +126,9 @@ const SoundDeviceChooserBase = new Lang.Class({
                 this._setVisibility();
             }
         }
-    },
+    }
 
-    _deviceAdded: function(control, id, dontcheck) {
+    _deviceAdded(control, id, dontcheck) {
         let obj = this._devices[id];
         let uidevice = null;
 
@@ -128,9 +142,9 @@ const SoundDeviceChooserBase = new Lang.Class({
             obj.text = uidevice.description;
             if(uidevice.origin != "")
             	obj.text += "\n(" + uidevice.origin + ")";
-            obj.item = this.menu.addAction( obj.text, Lang.bind(this,function() {
+            obj.item = this.menu.addAction( obj.text, () => {
                 this.changeDevice(uidevice);
-            }));
+            });
 
             let icon = uidevice.get_icon_name();
             if(icon == null || icon.trim() == "")
@@ -174,11 +188,12 @@ const SoundDeviceChooserBase = new Lang.Class({
                 let profileItem = obj.profilesitems[profile.name];
                 if(!profileItem) {
                     let profileName = profile.name;
-                    profileItem = this.menu.addAction( "Profile:" + profile.human_name, Lang.bind(this,function() {
-                        this.changeDevice(uidevice);
-                        control.change_profile_on_selected_device(uidevice, profileName);
-                        this._setDeviceActiveProfile(obj);
-                    }));
+                    profileItem = this.menu.addAction( "Profile:" + profile.human_name,
+                        () => {
+                            this.changeDevice(uidevice);
+                            control.change_profile_on_selected_device(uidevice, profileName);
+                            this._setDeviceActiveProfile(obj);
+                    });
 	
                     obj.profilesitems[profileName] = profileItem;
                     profileItem.setProfileActive = function(active) {
@@ -200,9 +215,9 @@ const SoundDeviceChooserBase = new Lang.Class({
         this._setChooserVisibility();
         this._setVisibility();
         return uidevice;
-    },
+    }
 
-    _deviceRemoved: function(control, id, dontcheck) {
+    _deviceRemoved(control, id, dontcheck) {
         let obj = this._devices[id];
         if(obj && obj.active) {
             global.log("Removed: " + id);
@@ -232,7 +247,7 @@ const SoundDeviceChooserBase = new Lang.Class({
              * when the uidevice is removed, Speakers are automatically
              * activated. So, lets wait for sometime before activating.
              */
-            this.deviceRemovedTimout = Mainloop.timeout_add(1500, Lang.bind(this,function() {
+            this.deviceRemovedTimout = Mainloop.timeout_add(1500, () => {
                 if (obj === this._activeDevice) {
                     for ( let id in this._devices) {
                         let device = this._devices[id];
@@ -244,13 +259,13 @@ const SoundDeviceChooserBase = new Lang.Class({
                 }
                 this.deviceRemovedTimout = null;
                 return false;
-            }));
+            });
             this._setChooserVisibility();
             this._setVisibility();
         }
-    },
+    }
 
-    _deviceActivated: function(control, id) {
+    _deviceActivated(control, id) {
         let obj = this._devices[id];
         if(obj && obj !== this._activeDevice) {
             global.log("Activated: " + id);
@@ -270,9 +285,9 @@ const SoundDeviceChooserBase = new Lang.Class({
                 this.icon.icon_name = "blank";
             }
         }
-    },
+    }
 
-    _setActiveProfile: function() {
+    _setActiveProfile() {
     	for (let id in this._devices) {
     	    let device = this._devices[id];
     	    if(device.active) {
@@ -280,9 +295,9 @@ const SoundDeviceChooserBase = new Lang.Class({
             }
         }
         return true;
-    },
+    }
 
-    _setDeviceActiveProfile: function(device) {
+    _setDeviceActiveProfile(device) {
         if (!device.uidevice.port_name) {
             return;
         }
@@ -290,12 +305,13 @@ const SoundDeviceChooserBase = new Lang.Class({
         if(activeProfile && device.activeProfile != activeProfile) {
             device.activeProfile = activeProfile;
             for (let profile of device.profiles) {
-                device.profilesitems[profile.name].setProfileActive(profile.name == device.activeProfile);
+                device.profilesitems[profile.name]
+                    .setProfileActive(profile.name == device.activeProfile);
             }
         }
-    },
+    }
 
-    _getDeviceVisibility: function() {
+    _getDeviceVisibility() {
         let hideChooser = this._settings.get_boolean(Prefs.HIDE_ON_SINGLE_DEVICE);
         if (hideChooser) {
             return (Object.keys(this._availableDevicesIds).length > 1);
@@ -303,31 +319,32 @@ const SoundDeviceChooserBase = new Lang.Class({
         else {
             return true;
         }
-    },
+    }
 
-    _setChooserVisibility: function() {
+    _setChooserVisibility() {
         let visibility = this._getDeviceVisibility();
         for (let id in this._availableDevicesIds) {
             this._devices[id].item.actor.visible = visibility;
         }
         this._triangleBin.visible = visibility;
         this._setProfileVisibility();
-    },
+    }
 
-    _setProfileVisibility: function() {
+    _setProfileVisibility() {
         let visibility = this._settings.get_boolean(Prefs.SHOW_PROFILES);
         for (let id in this._availableDevicesIds) {
             let device = this._devices[id];
             if ( device.profiles ) {
                 for (let profile of device.profiles) {
                     device.profilesitems[profile.name].actor.visible =
-                        (visibility && device.item.actor.visible && Object.keys(device.profilesitems).length > 1);
+                        (visibility && device.item.actor.visible &&
+                            Object.keys(device.profilesitems).length > 1);
                 }
             }
         }
-    },
+    }
 
-    _getIcon: function(name) {
+    _getIcon(name) {
         let iconsType = this._settings.get_string(Prefs.ICON_THEME);
         switch (iconsType) {
             case Prefs.ICON_THEME_COLORED:
@@ -337,9 +354,9 @@ const SoundDeviceChooserBase = new Lang.Class({
             default:
                 return "none";
         }
-    },
+    }
 
-    _setIcons: function() {
+    _setIcons() {
         // Set the icons in the selection list
     	for (let id in this._devices) {
     	    let device = this._devices[id];
@@ -360,16 +377,19 @@ const SoundDeviceChooserBase = new Lang.Class({
         } else {
             this.icon.icon_name = "blank";
         }
-    },
+    }
 
 
-    _canShowDevice: function(uidevice, defaultValue) {
-        if(!uidevice || !this._portsSettings || uidevice.port_name == null || uidevice.description == null) {
+    _canShowDevice(uidevice, defaultValue) {
+        if(!uidevice || !this._portsSettings ||
+            uidevice.port_name == null ||
+            uidevice.description == null) {
             return defaultValue;
         }
 
         for (let port of this._portsSettings) {
-            if(port && port.name == uidevice.port_name && port.human_name == uidevice.description) {
+            if(port && port.name == uidevice.port_name &&
+                port.human_name == uidevice.description) {
                 switch(port.display_option) {
                     case 1:
                         return true;
@@ -383,9 +403,9 @@ const SoundDeviceChooserBase = new Lang.Class({
             }
         }
         return defaultValue;
-    },
+    }
 
-    _resetDevices: function() {
+    _resetDevices() {
         this._portsSettings = JSON.parse(this._settings.get_string(Prefs.PORT_SETTINGS));
         for (let id in this._devices) {
             let device = this._devices[id];
@@ -402,17 +422,17 @@ const SoundDeviceChooserBase = new Lang.Class({
                     break;
             }
         }
-    },
+    }
 
-    _setVisibility : function() {
+    _setVisibility() {
         if (!this._settings.get_boolean(this._show_device_signal))
             this.actor.visible = false;
         else
             // if setting says to show device, check for any device, otherwise hide the "actor"
             this.actor.visible = (Object.keys(this._availableDevicesIds).length > 0);
-    },
+    }
 
-    destroy: function() {
+    destroy() {
         this._signalManager.disconnectAll();
         if(this.deviceRemovedTimout) {
             Mainloop.source_remove(this.deviceRemovedTimout);
@@ -424,4 +444,4 @@ const SoundDeviceChooserBase = new Lang.Class({
         }
         this.parent();
     }
-});
+};

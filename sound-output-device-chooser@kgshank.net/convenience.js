@@ -15,12 +15,10 @@
  * Orignal Author: Gopi Sankar Karmegam
  ******************************************************************************/
  /* jshint moz:true */
-
 const ByteArray = imports.byteArray;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 const ExtensionUtils = imports.misc.extensionUtils;
-const Lang = imports.lang;
 
 /**
  * getSettings:
@@ -159,36 +157,32 @@ function parseOutput(out) {
     }
 }
 
-const Signal = new Lang.Class({
-    Name: 'Signal',
-
-    _init: function(signalSource, signalName, callback) {
+const Signal = class Signal {
+    constructor(signalSource, signalName, callback) {
         this._signalSource = signalSource;
         this._signalName = signalName;
         this._signalCallback = callback;
-    },
+    }
 
-    connect: function() {
+    connect() {
         this._signalId = this._signalSource.connect(this._signalName, this._signalCallback);
-    },
+    }
 
-    disconnect: function() {
+    disconnect() {
         if(this._signalId) {
             this._signalSource.disconnect(this._signalId);
             this._signalId = null;
         }
     }
-});
+};
 
-var SignalManager = new Lang.Class({
-	Name: 'SignalManager',
-
-	_init: function() {
+var SignalManager = class SignalManager {
+	constructor() {
 		this._signals = [];
 		this._signalsBySource = {};
-	},
+	}
 
-	addSignal: function(signalSource, signalName, callback) {
+	addSignal(signalSource, signalName, callback) {
 		let obj = null;
 		if(signalSource && signalName && callback) {
             obj = new Signal(signalSource, signalName, callback);
@@ -200,22 +194,22 @@ var SignalManager = new Lang.Class({
             this._signalsBySource[signalSource].push(obj)
         }
 		return obj;
-    },
+    }
 
-    disconnectAll: function() {
+    disconnectAll() {
     	for (let signal of this._signals){
     		signal.disconnect();
     	}
-    },
+    }
 
-    disconnectBySource: function(signalSource) {
+    disconnectBySource(signalSource) {
     	if(this._signalsBySource[signalSource]) {
     		for (let signal of this._signalsBySource[signalSource]) {
     			signal.disconnect();
     		}
         }
     }
-});
+};
 
 
 function getProfilesForPort(portName, card) {
